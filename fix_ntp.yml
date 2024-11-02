@@ -1,0 +1,89 @@
+---
+- name: Identify and fix ntp
+  hosts: tokyo
+  gather_facts: false
+  vars:
+    authorized_ntp_servers:
+    - "172.25.254.254"
+    - "172.25.250.254"
+  tasks:
+  - name: Gather the current NTP settings for cisco
+    when:
+    - ansible_network_os == 'cisco.ios.ios'
+    - inventory_hostname == 'iosxe2.lab.example.com'
+    cisco.ios.ios_command:
+      commands:
+        - show run | include ^ntp server
+    register: ntp_ios_output
+
+  - name: Gather the current settings for eos
+    when:
+    - ansible_network_os == 'arista.eos.eos'
+    - inventory_hostname == 'arista2.lab.example.com'
+    arista.eos.eos_command:
+      commands:
+        - show run | include ^ntp server
+    register: ntp_eos_output
+
+  - name: Create the file for cisco
+    when:
+    - ansible_network_os == 'cisco.ios.ios'
+    - inventory_hostname == 'iosxe2.lab.example.com'
+    ansible.builtin.lineinfile:
+      line: "{{ ntp_ios_output.stdout[0] }}"
+      state: present
+      path: "{{ inventory_hostname }}.txt"
+      create: yes
+
+  - name: Create the file for eos
+    when:
+    - ansible_network_os == 'arista.eos.eos'
+    - inventory_hostname == 'arista2.lab.example.com'
+    ansible.builtin.lineinfile:
+      line: "{{ ntp_eos_output.stdout[0] }}"
+      state: present
+      path: "{{ inventory_hostname }}.txt"
+      create: yes
+
+  - name: Create a backup for cisco
+    when:
+    - ansible_network_os == 'cisco.ios.ios'
+    - inventory_hostname == 'iosxe2.lab.example.com'
+    ansible.builtin.copy:
+      src: "{{ inventory_hostname }}.txt"
+      dest: "{{ inventory_hostname }}.bkp.txt"
+
+  - name: Create a backup for eos
+    when:
+    - ansible_network_os == 'arista.eos.eos'
+    - inventory_hostname == 'arista2.lab.example.com'
+    ansible.builtin.copy:
+      src: "{{ inventory_hostname }}.txt"
+      dest: "{{ inventory_hostname }}.bkp.txt"
+
+  - name: Extract the ip from the file
+    when: 
+#    - inventory_hostname == 'iosxe2.lab.example.com' or inventory_hostname == 'arista2.lab.example.com'
+    set_fact:
+      myips: "{{ lookup('file', '{{ inventory_hostname }}.txt') | regex_findall('\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b') }}"
+
+  - name: Unauthorized NTP servers
+    when:
+#    - inventory_hostname == 'iosxe2.lab.example.com' or inventory_hostname == 'arista2.lab.example.com'
+    set_fact:
+      fake_ntp: "{{ myips | difference(authorized_ntp_servers) }}"
+
+  - name: Remove bogus ntp cisco
+    when: 
+    - inventory_hostname == 'iosxe2.lab.example.com' 
+    - fake_ntp | length > 0
+    cisco.ios.ios_config:
+      lines: "{{ fake_ntp | map('regex_replace', '^(.*)$', 'no ntp server \\1') | list }}"
+
+  - name: Remove bogus ntp eos
+    when: 
+    - inventory_hostname == 'arista2.lab.example.com' 
+    - fake_ntp | length > 0
+    arista.eos.eos_config:
+      lines: "{{ fake_ntp | map('regex_replace', '^(.*)$', 'no ntp server \\1') | list }}"
+...

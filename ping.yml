@@ -1,0 +1,18 @@
+---
+- name: Check connectivity to a destination setting count and interface
+  hosts: junos
+  gather_facts: false
+  tasks:
+  - name: Eable netconf
+    vars:
+      ansible.connection: 'ansible.netcommon.network_cli'
+    junipernetworks.junos.junos_netconf:
+      netconf_port: 830
+      state: present
+  - name: Check connectivity
+    junipernetworks.junos.junos_ping:
+      dest: 172.25.250.254
+      interface: fxp0
+      count: 3
+      size: 512
+...
