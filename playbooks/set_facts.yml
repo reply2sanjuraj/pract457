@@ -1,0 +1,27 @@
+---
+- name: Set the description for cisco and eos 
+  hosts: cisco,eos
+  gather_facts: false
+  tasks:
+  - name: Set the description for cisco
+    when: ansible_network_os == 'cisco.ios.ios'
+    cisco.ios.ios_config:
+      lines:
+      - description EX457-Cisco
+      parents: "{{ item }}"
+    with_items:
+    - interface GigabitEthernet1
+    notify: save_ios_changes
+  - name: Set the description for eos device
+    when: ansible_network_os == 'arista.eos.eos'
+    arista.eos.eos_config:
+      lines:
+      - description EX457-Arista
+      parents: "{{ item }}"
+    with_items:
+    - interface Ethernet1
+  handlers:
+  - name: save_ios_changes
+    cisco.ios.ios_config:
+      save_when: always
+...

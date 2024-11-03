@@ -1,0 +1,52 @@
+- name: Create the user for cisco devices
+  vars:
+    net_admin: "ciscouser"
+  when:
+  - inventory_hostname in groups['cisco']
+  ansible.builtin.user:
+    name: "{{ net_admin}}"
+    state: present
+    ssh_key_file: /home/student/.ssh/id_rsa
+
+- name: Create the user for eos devices
+  vars:
+    net_admin: "eosuser"
+  when:
+  - inventory_hostname in groups['eos']
+  ansible.builtin.user:
+    name: "{{ net_admin }}"
+    state: present
+    ssh_key_file: /home/student/.ssh/id_rsa
+
+- name: Create the user for junos
+  vars:
+    net_admin: "junosuser"
+  when:
+  - inventory_hostname in groups['junos']
+  ansible.builtin.user:
+    name: "{{ net_admin }}"
+    ssh_key_file: /home/student/.ssh/id_rsa
+    state: present
+
+- name: Create the user for vyos
+  vars:
+    net_admin: "singto"
+    net_password: "compedel18"
+    ansible_connection: "ansible.netcommon.network_cli"
+    ansible_network_os: "vyos.vyos.vyos"
+  when:
+  - inventory_hostname == 'vyos1.lab.example.com'
+  ansible.builtin.user:
+    name: "{{ net_admin }}"
+    password: "{{ net_password | password_hash('sha512') }}"
+    ssh_key_file: /home/student/.ssh/id_rsa
+    state: present
+
+- name: Create the login banner
+  when:
+  - inventory_hostname == 'vyso1.lab.example.com'
+  vyos.vyos.vyos_banner:
+    banner: post-login
+    text: Michael Jackson rocks
+    state: present
+...

@@ -1,0 +1,61 @@
+---
+- name: Configure SNMP for cisco and vyso1
+  hosts: cisco,vyos1.lab.example.com
+  gather_facts: false
+  tasks:
+  - name: Configure SNMP for cisco
+    when: 
+    - ansible_network_os == 'cisco.ios.ios'
+    - inventory_hostname in groups['cisco']
+    - inventory_hostname != 'vyos1.lab.example.com'
+    cisco.ios.ios_snmp_server:
+      state: replaced
+      config:
+        location: 'Thailand'
+        communities:
+        - name: 'Phuket'
+          rw: true
+        traps:
+          snmp:
+            authentication: true
+            coldstart: true
+            linkdown: true
+            linkup: true
+            warmstart: true
+
+  - name: Configure SNMP for vyos
+    when: 
+    - inventory_hostname == 'vyso1.lab.example.com'
+    vars:
+      ansible_connection: 'ansible.netcommon.network_cli'
+      ansible_network_os: 'vyos.vyos.vyos'
+    vyos.vyos.vyos_snmp_server:
+      state: replaced
+      config:
+        location: 'Thailand'
+        communities:
+          - name: "Pattaya"
+            authorization_type: "ro"
+
+- name: Configure DNS for cisco and junos 
+  hosts: cisco,junos
+  gather_facts: false
+  tasks:
+  - name: Configure DNS for cisco 
+    when:
+    - ansible_network_os == 'cisco.ios.ios'
+    - inventory_hostname in groups['cisco']
+    cisco.ios.ios_system:
+      name_servers:
+      - 172.25.250.220
+      - 8.8.4.4
+
+  - name: Configure DNS for junos 
+    when:
+    - ansible_network_os == 'junipernetworks.junos.junos'
+    - inventory_hostname in groups['junos']
+    junipernetworks.junos.junos_system:
+      name_servers:
+      - 172.25.250.220
+      - 8.8.4.4
+...
